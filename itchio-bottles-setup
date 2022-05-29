@@ -32,6 +32,7 @@ function abort() {
 # --------------------------------------------------
 _ITCH_DESKTOP_PATH="$HOME/.local/share/applications/io.itch.itch.desktop"
 _WINE_SCRIPT_PATH="$HOME/.local/bin/wine"
+_ITCH_SCRIPT_PATH="$HOME/.local/bin/itch_script"
 _WINE_WORKAROUND="1"  # enable by default as many distros don't have .local in PATH
 _BOTTLES_IS_FLATPAK="0"
 _SELECTED_BOTTLE=""
@@ -42,6 +43,8 @@ _SAMPLE_WINE_SCRIPT_FLATPAK='#!/bin/sh
 flatpak run --command="bottles-cli" com.usebottles.bottles shell -b BOTTLE_NAME -i "$@"'
 _SAMPLE_WINE_SCRIPT='#!/bin/sh
 bottles-cli shell -b BOTTLE_NAME -i "$@"'
+_SAMPLE_FIXED_ITCHIO='#!/bin/sh
+PATH="$HOME/.local/bin:$PATH" EXEC_PATH %U'
 
 # Welcome
 # --------------------------------------------------
@@ -157,7 +160,11 @@ if [ $_WINE_WORKAROUND == 1 ]; then
         cp "$_ITCH_DESKTOP_PATH" "$_ITCH_DESKTOP_BACKUP_PATH"
     fi
     info "Tweaking itch desktop file to use wine script instead of the system one..."
-    sed -i 's,'^"Exec=/"','"Exec=env PATH=$HOME/.local/bin/ /"',' "$_ITCH_DESKTOP_PATH"
+    _ITCH_EXEC=$(grep "^Exec=" "$_ITCH_DESKTOP_PATH" | sed -e 's/^Exec=//g')
+    _ITCH_SCRIPT=$(echo "$_SAMPLE_FIXED_ITCHIO" | sed -e "s,EXEC_PATH,$_ITCH_EXEC,g")
+    echo "$_ITCH_SCRIPT" > "$_ITCH_SCRIPT_PATH"
+    chmod +x "$_ITCH_SCRIPT_PATH"
+    sed -i "s,^Exec=.*,Exec=$_ITCH_SCRIPT_PATH,g" "$_ITCH_DESKTOP_PATH"
 fi
 
 # Show instructions
