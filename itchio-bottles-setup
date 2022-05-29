@@ -1,0 +1,166 @@
+#!/bin/bash
+# 
+# This script set-up a custom wine executable that is found and used by 
+# itch.io to start Windows games in a prefix created with Bottles.
+# 
+# Author: Mirko Brombin <send@mirko.pm>
+
+# Utils
+# --------------------------------------------------
+function info() {
+    printf "\e[0;36m$1\e[0m\n"
+}
+
+function error() {
+    printf "❌  \e[0;31m$1\e[0m\n"
+}
+
+function warning() {
+    printf "⚠️  \e[0;33m$1\e[0m\n"
+}
+
+function success() {
+    printf "✅  \e[0;32m$1\e[0m\n"
+}
+
+function abort() {
+    error "$1"
+    exit 1
+}
+
+# Settings
+# --------------------------------------------------
+_ITCH_DESKTOP_PATH="$HOME/.local/share/applications/io.itch.itch.desktop"
+_WINE_SCRIPT_PATH="$HOME/.local/bin/wine"
+_WINE_WORKAROUND="0"
+_BOTTLES_IS_FLATPAK="0"
+_SELECTED_BOTTLE=""
+
+# Samples
+# --------------------------------------------------
+_SAMPLE_WINE_SCRIPT_FLATPAK='#!/bin/sh
+flatpak run --command="bottles-cli" com.usebottles.bottles shell -b BOTTLE_NAME -i "$@"'
+_SAMPLE_WINE_SCRIPT='#!/bin/sh
+bottles-cli shell -b BOTTLE_NAME -i "$@"'
+
+# Welcome
+# --------------------------------------------------
+info "Welcome $(whoami)!"
+info "This script will set-up Bottles to works with the itch.io launcher."
+read -p "Do you want to continue? [y/N] " -n 1 -r
+echo
+if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    abort "Aborting..."
+fi
+
+# Check if itch.io is installed
+# --------------------------------------------------
+info "Checking if itch.io is installed..."
+if [ ! -d "$HOME/.itch" ]; then
+    abort "Itch.io is not installed! Install it first. Aborting..."
+else
+    success "Itch.io found!"
+fi
+
+# Check if Wine is installed
+# --------------------------------------------------
+if [ -x "$(command -v wine)" ]; then
+    if [[ ! $(file "$(command -v wine)") == *"POSIX shell script"* ]]; then
+        if [ "$(file "$(command -v wine)")" != "application/x-shellscript" ]; then
+            warning "Wine is installed but it is not a shell script. This is not a problem, but it might cause problems with the launcher."
+        fi
+
+        warning "Wine is already installed, this may cause issues."
+        warning "This script can set-up a workaround if you don't want to uninstall it."
+        warning "Do you want to continue with the workaround? [y/N] "
+        read -p " " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            _WINE_WORKAROUND="1"
+        fi
+    fi
+fi
+
+# Check if Bottles is installed
+# --------------------------------------------------
+info "Checking if Bottles is installed..."
+if [ ! -z "$(flatpak list | grep com.usebottles.bottles)" ]; then
+    _BOTTLES_IS_FLATPAK="1"
+fi
+if [ $_BOTTLES_IS_FLATPAK == 0 ]; then
+    if [ ! -x "$(command -v bottles)" ]; then
+        abort "Bottles is not installed! Install it first. Aborting..."
+    fi
+fi
+success "Bottles found!"
+
+# Let the user choose the bottle
+# --------------------------------------------------
+info "Loading your bottles..."
+if [ $_BOTTLES_IS_FLATPAK == 1 ]; then
+    _BOTTLES=$(flatpak run --command="bottles-cli" com.usebottles.bottles list bottles 2>/dev/null)
+else
+    _BOTTLES=$(bottles-cli list bottles 2>/dev/null)
+fi
+
+_BOTTLES=$(echo "$_BOTTLES" | sed -n '/Found/,$p' | sed -e '1d')
+for i in $(seq 1 $(echo "$_BOTTLES" | wc -l)); do
+    echo "$i. $(echo "$_BOTTLES" | sed -n "$i p")"
+done
+echo "0. - Exit"
+
+read -p "Which bottle do you want to use for itch.io? [0-$(echo "$_BOTTLES" | wc -l)] " -n 1 -r
+echo
+if [[ $REPLY == 0 ]]; then
+    abort "Aborting..."
+fi
+
+_SELECTED_BOTTLE=$(echo "$_BOTTLES" | sed -n "$REPLY p" | sed -e 's/^- //')
+success "Selected bottle: $_SELECTED_BOTTLE"
+
+# Make wine script
+# --------------------------------------------------
+info "Creating custom wine script..."
+if [ $_BOTTLES_IS_FLATPAK == 1 ]; then
+    _WINE_SCRIPT=$(echo "$_SAMPLE_WINE_SCRIPT_FLATPAK" | sed -e "s/BOTTLE_NAME/$_SELECTED_BOTTLE/g")
+else
+    _WINE_SCRIPT=$(echo "$_SAMPLE_WINE_SCRIPT" | sed -e "s/BOTTLE_NAME/$_SELECTED_BOTTLE/g")
+fi
+
+# Makes a backup of the wine script if already exists
+# --------------------------------------------------
+if [ -f "$_WINE_SCRIPT_PATH" ]; then
+    _WINE_SCRIPT_BACKUP_PATH="$_WINE_SCRIPT_PATH.bak.$(date +%Y%m%d%H%M%S)"
+    info "Backing up existing wine script to $_WINE_SCRIPT_BACKUP_PATH..."
+    mv "$_WINE_SCRIPT_PATH" "$_WINE_SCRIPT_BACKUP_PATH"
+fi
+
+# Write wine script
+# --------------------------------------------------
+info "Writing wine script to $_WINE_SCRIPT_PATH..."
+echo "$_WINE_SCRIPT" > "$_WINE_SCRIPT_PATH"
+
+# Set-up permissions
+# --------------------------------------------------
+info "Setting-up permissions..."
+chmod +x "$_WINE_SCRIPT_PATH"
+
+# Wine workaround
+# --------------------------------------------------
+if [ $_WINE_WORKAROUND == 1 ]; then
+    info "Setting-up wine workaround..."
+    if [ -f "$_ITCH_DESKTOP_PATH" ]; then
+        _ITCH_DESKTOP_BACKUP_PATH="$_ITCH_DESKTOP_PATH.bak.$(date +%Y%m%d%H%M%S)"
+        info "Backing up existing itch desktop file to $_ITCH_DESKTOP_BACKUP_PATH..."
+        cp "$_ITCH_DESKTOP_PATH" "$_ITCH_DESKTOP_BACKUP_PATH"
+    fi
+    info "Tweaking itch desktop file to use wine script instead of the system one..."
+    sed -i 's/Exec=/Exec=PATH=$HOME\/.local\/bin:\$PATH /g' "$_ITCH_DESKTOP_PATH"
+fi
+
+# Show instructions
+# --------------------------------------------------
+success "All done!"
+info "Now you can open itch.io and proceed with the installation of the games. 
+Remember to select the drive_c/ folder of your bottle in the first installation, 
+so you won't have permission problems using Flatpak."
