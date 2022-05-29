@@ -32,7 +32,7 @@ function abort() {
 # --------------------------------------------------
 _ITCH_DESKTOP_PATH="$HOME/.local/share/applications/io.itch.itch.desktop"
 _WINE_SCRIPT_PATH="$HOME/.local/bin/wine"
-_WINE_WORKAROUND="0"
+_WINE_WORKAROUND="1"  # enable by default as many distros don't have .local in PATH
 _BOTTLES_IS_FLATPAK="0"
 _SELECTED_BOTTLE=""
 
@@ -64,19 +64,21 @@ fi
 
 # Check if Wine is installed
 # --------------------------------------------------
-if [ -x "$(command -v wine)" ]; then
-    if [[ ! $(file "$(command -v wine)") == *"POSIX shell script"* ]]; then
-        if [ "$(file "$(command -v wine)")" != "application/x-shellscript" ]; then
-            warning "Wine is installed but it is not a shell script. This is not a problem, but it might cause problems with the launcher."
-        fi
+if [ "$_WINE_WORKAROUND" == "0" ]; then
+    if [ -x "$(command -v wine)" ]; then
+        if [[ ! $(file "$(command -v wine)") == *"POSIX shell script"* ]]; then
+            if [ "$(file "$(command -v wine)")" != "application/x-shellscript" ]; then
+                warning "Wine is installed but it is not a shell script. This is not a problem, but it might cause problems with the launcher."
+            fi
 
-        warning "Wine is already installed, this may cause issues."
-        warning "This script can set-up a workaround if you don't want to uninstall it."
-        warning "Do you want to continue with the workaround? [y/N] "
-        read -p " " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            _WINE_WORKAROUND="1"
+            warning "Wine is already installed, this may cause issues."
+            warning "This script can set-up a workaround if you don't want to uninstall it."
+            warning "Do you want to continue with the workaround? [y/N] "
+            read -p " " -n 1 -r
+            echo
+            if [[ $REPLY =~ ^[Yy]$ ]]; then
+                _WINE_WORKAROUND="1"
+            fi
         fi
     fi
 fi
