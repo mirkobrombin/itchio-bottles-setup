@@ -1,6 +1,6 @@
 # itchio-bottles-setup
-This script set-up a custom wine executable that is found and used by itch.io 
-to start Windows games in a prefix created with Bottles.
+This script sets up a custom wine executable that itch.io uses to start Windows 
+games in a prefix created with Bottles.
 
 ## Installation
 ### Using `curl`
