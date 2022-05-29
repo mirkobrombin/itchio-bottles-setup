@@ -2,6 +2,8 @@
 This script sets up a custom wine executable that itch.io uses to start Windows 
 games in a prefix created with Bottles.
 
+> **!NOTE!**: This script need Bottles 2022.5.28-3 or greater to work.
+
 ## Installation
 ### Using `curl`
 ```bash
