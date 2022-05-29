@@ -157,7 +157,7 @@ if [ $_WINE_WORKAROUND == 1 ]; then
         cp "$_ITCH_DESKTOP_PATH" "$_ITCH_DESKTOP_BACKUP_PATH"
     fi
     info "Tweaking itch desktop file to use wine script instead of the system one..."
-    sed -i 's,'"Exec="','"Exec=env PATH=$HOME/.local/bin/ "',' "$_ITCH_DESKTOP_PATH"
+    sed -i 's,'^"Exec=/"','"Exec=env PATH=$HOME/.local/bin/ /"',' "$_ITCH_DESKTOP_PATH"
 fi
 
 # Show instructions
