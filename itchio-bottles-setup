@@ -44,7 +44,7 @@ flatpak run --command="bottles-cli" com.usebottles.bottles shell -b BOTTLE_NAME 
 _SAMPLE_WINE_SCRIPT='#!/bin/sh
 bottles-cli shell -b BOTTLE_NAME -i "$@"'
 _SAMPLE_FIXED_ITCHIO='#!/bin/sh
-PATH="$HOME/.local/bin:$PATH" EXEC_PATH %U'
+PATH="$HOME/.local/bin:$PATH" EXEC_PATH'
 
 # Welcome
 # --------------------------------------------------
